@@ -168,15 +168,20 @@ function extractFromMetaTags($) {
 }
 
 /**
- * Check if content is private
+ * Check if content is explicitly marked as private
+ * Only check for explicit private account indicators, not login prompts
  */
-function isPrivateContent($, html) {
-    if (html.includes('Login') && html.includes('Sign Up') &&
-        !html.includes('og:video') && !html.includes('video_url')) {
+function isExplicitlyPrivate(html) {
+    // Only check for explicit private account messages
+    if (html.includes('This Account is Private')) {
         return true;
     }
-    if (html.includes('This Account is Private') || html.includes('"is_private":true')) {
+    if (html.includes('"is_private":true')) {
         return true;
+    }
+    // Check for "sorry this page isn't available"
+    if (html.includes("Sorry, this page isn't available")) {
+        return false; // This is NOT_FOUND, not private
     }
     return false;
 }
@@ -201,8 +206,8 @@ async function extractMedia(url) {
     const html = await fetchPage(url);
     const $ = cheerio.load(html);
 
-    // Check for private content
-    if (isPrivateContent($, html)) {
+    // Only check for EXPLICIT private content (not login prompts)
+    if (isExplicitlyPrivate(html)) {
         throw new ExtractionError('Content is private or requires login', 'PRIVATE_CONTENT');
     }
 
